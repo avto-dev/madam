@@ -154,17 +154,17 @@ class FFmpegProcessor(Processor):
                 if stream_type in metadata:
                     break
                 metadata[stream_type] = {}
-            if 'codec_name' in stream:
-                metadata[stream_type]['codec'] = stream['codec_name']
+            if 'width' in stream:
+                metadata['width'] = max(stream['width'], metadata.get('width', 0))
+            if 'height' in stream:
+                metadata['height'] = max(stream['height'], metadata.get('height', 0))
+            if stream_type not in metadata:
+                continue
             for key in ('codec_tag_string', 'codec_tag'):
                 if key in stream:
                     metadata[stream_type][key] = stream[key]
             if 'bit_rate' in stream:
                 metadata[stream_type]['bitrate'] = float(stream['bit_rate'])/1000.0
-            if 'width' in stream:
-                metadata['width'] = max(stream['width'], metadata.get('width', 0))
-            if 'height' in stream:
-                metadata['height'] = max(stream['height'], metadata.get('height', 0))
 
         return Asset(essence=file, **metadata)
 
