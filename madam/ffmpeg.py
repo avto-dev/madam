@@ -162,7 +162,7 @@ class FFmpegProcessor(Processor):
                 metadata['height'] = max(stream['height'], metadata.get('height', 0))
             if stream_type not in metadata:
                 continue
-            for key in ('codec_tag_string', 'codec_tag'):
+            for key in ('codec_tag_string', 'codec_tag', 'profile'):
                 if key in stream:
                     metadata[stream_type][key] = stream[key]
             if 'bit_rate' in stream:
