@@ -216,7 +216,8 @@ class FFmpegProcessor(Processor):
                      width=width, height=height, duration=asset.duration)
 
     @operator
-    def convert(self, asset, mime_type, video=None, audio=None, subtitles=None):
+    def convert(self, asset, mime_type,
+                video=None, audio=None, subtitles=None, **custom_keys):
         """
         Creates a new asset of the specified MIME type from the essence of the
         specified asset.
@@ -254,6 +255,9 @@ class FFmpegProcessor(Processor):
         with _FFmpegContext(asset.essence, result) as ctx:
             command = ['ffmpeg', '-loglevel', 'error',
                        '-i', ctx.input_path]
+            for key, value in custom_keys.items():
+                command.extend(('-{}'.format(key), str(value)))
+
             if video is not None:
                 if 'codec' in video:
                     if video['codec']:
