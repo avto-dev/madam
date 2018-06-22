@@ -1,4 +1,5 @@
 import io
+import itertools
 import json
 import multiprocessing
 import os
@@ -255,10 +256,13 @@ class FFmpegProcessor(Processor):
 
         result = io.BytesIO()
         with _FFmpegContext(asset.essence, result) as ctx:
-            command = ['ffmpeg', '-loglevel', 'error',
-                       '-i', ctx.input_path]
-            for key, value in custom_keys.items():
-                command.extend(('-{}'.format(key), str(value)))
+            command = ['ffmpeg', '-loglevel', 'error', '-i', ctx.input_path]
+            command.extend(
+                itertools.chain.from_iterable(
+                    ('-{}'.format(key), str(value))
+                    for key, value in custom_keys.items()
+                )
+            )
 
             if video is not None:
                 if 'codec' in video:
