@@ -1,4 +1,5 @@
 import io
+import itertools
 import json
 import multiprocessing
 import os
@@ -80,6 +81,7 @@ class FFmpegProcessor(Processor):
         ('matroska,webm', 'video'): 'video/x-matroska',
         ('mov,mp4,m4a,3gp,3g2,mj2', 'video'): 'video/quicktime',
         ('avi', 'video'): 'video/x-msvideo',
+        ('mpegts', 'video'): 'video/mp2t',
         ('ogg', 'video'): 'video/ogg',
         ('mp3', 'audio'): 'audio/mpeg',
         ('ogg', 'audio'): 'audio/ogg',
@@ -90,6 +92,7 @@ class FFmpegProcessor(Processor):
         'video/x-matroska': 'matroska',
         'video/quicktime': 'mov',
         'video/x-msvideo': 'avi',
+        'video/mp2t': 'mpegts',
         'video/ogg': 'ogg',
         'audio/mpeg': 'mp3',
         'audio/ogg': 'ogg',
@@ -160,7 +163,9 @@ class FFmpegProcessor(Processor):
                 metadata['height'] = max(stream['height'], metadata.get('height', 0))
             if stream_type not in metadata:
                 continue
-            for key in ('codec_tag_string', 'codec_tag'):
+            if 'codec_name' in stream:
+                metadata[stream_type]['codec'] = stream['codec_name']
+            for key in ('codec_tag_string', 'codec_tag', 'profile'):
                 if key in stream:
                     metadata[stream_type][key] = stream[key]
             if 'bit_rate' in stream:
@@ -214,7 +219,8 @@ class FFmpegProcessor(Processor):
                      width=width, height=height, duration=asset.duration)
 
     @operator
-    def convert(self, asset, mime_type, video=None, audio=None, subtitles=None):
+    def convert(self, asset, mime_type,
+                video=None, audio=None, subtitles=None, **custom_keys):
         """
         Creates a new asset of the specified MIME type from the essence of the
         specified asset.
@@ -250,8 +256,14 @@ class FFmpegProcessor(Processor):
 
         result = io.BytesIO()
         with _FFmpegContext(asset.essence, result) as ctx:
-            command = ['ffmpeg', '-loglevel', 'error',
-                       '-i', ctx.input_path]
+            command = ['ffmpeg', '-loglevel', 'error', '-i', ctx.input_path]
+            command.extend(
+                itertools.chain.from_iterable(
+                    ('-{}'.format(key), str(value))
+                    for key, value in custom_keys.items()
+                )
+            )
+
             if video is not None:
                 if 'codec' in video:
                     if video['codec']:
@@ -382,6 +394,7 @@ class FFmpegMetadataProcessor(MetadataProcessor):
         ('matroska,webm', 'video'): 'video/x-matroska',
         ('mov,mp4,m4a,3gp,3g2,mj2', 'video'): 'video/quicktime',
         ('avi', 'video'): 'video/x-msvideo',
+        ('mpegts', 'video'): 'video/mp2t',
         ('ogg', 'video'): 'video/ogg',
         ('mp3', 'audio'): 'audio/mpeg',
         ('ogg', 'audio'): 'audio/ogg',
@@ -392,6 +405,7 @@ class FFmpegMetadataProcessor(MetadataProcessor):
         'video/x-matroska': 'matroska',
         'video/quicktime': 'mov',
         'video/x-msvideo': 'avi',
+        'video/mp2t': 'mpegts',
         'video/ogg': 'ogg',
         'audio/mpeg': 'mp3',
         'audio/ogg': 'ogg',
@@ -402,6 +416,7 @@ class FFmpegMetadataProcessor(MetadataProcessor):
     metadata_keys_by_mime_type = {
         'video/x-matroska': bidict({}),
         'video/x-msvideo': bidict({}),
+        'video/mp2t': bidict({}),
         'video/quicktime': bidict({}),
         'video/ogg': bidict({}),
         'audio/mpeg': bidict({
